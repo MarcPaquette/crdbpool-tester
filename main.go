@@ -1,49 +1,60 @@
 package main
 
 import (
-"context"
-"fmt"
-"log"
-"os"
-"time"
+	"context"
+	"fmt"
+	"os"
+	"time"
 
-"github.com/authzed/spicedb/internal/datastore/crdb/pool"
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgxpool"
+
+	crdbpool "github.com/authzed/crdbpool/pkg"
 )
 
 func main() {
-connString := os.Getenv("CRDB_CONN_STRING")
-if connString == "" {
-log.Fatal("CRDB_CONN_STRING env var must be set (e.g.,
-postgresql://user:pass@host:26257/defaultdb?sslmode=disable)")
+	ctx := context.Background()
+
+	dsn := os.Getenv("DATABASE_URL")
+	if dsn == "" {
+		fmt.Println("DATABASE_URL is required")
+		os.Exit(1)
+	}
+
+	ht, err := crdbpool.NewNodeHealthChecker(dsn)
+	if err != nil {
+		fmt.Println("error creating health tracker:", err)
+		os.Exit(1)
+	}
+	ctxPoll, cancelPoll := context.WithCancel(ctx)
+	defer cancelPoll()
+	go ht.Poll(ctxPoll, 5*time.Second)
+
+	cfg, err := pgxpool.ParseConfig(dsn)
+	if err != nil {
+		fmt.Println("error parsing config:", err)
+		os.Exit(1)
+	}
+
+	rp, err := crdbpool.NewRetryPool(ctx, "example", cfg, ht, 3, 200*time.Millisecond)
+	if err != nil {
+		fmt.Println("error creating retry pool:", err)
+		os.Exit(1)
+	}
+	defer rp.Close()
+
+	for i := 0; i < 100; i++ {
+		err = rp.QueryRowFunc(ctx, func(ctx context.Context, row pgx.Row) error {
+			var now time.Time
+			if err := row.Scan(&now); err != nil {
+				return err
+			}
+			fmt.Println("ping", i+1, "DB time:", now)
+			return nil
+		}, "select now()")
+		if err != nil {
+			fmt.Println("query error:", err)
+			os.Exit(1)
+		}
+	}
 }
-
-// Context with a reasonable timeout for setup and queries
-ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-defer cancel()
-
-// Configure pool options (tweak as needed for your repro)
-opts := pool.Options{
-// Reasonable small pool for a repro
-MaxConns:        5,
-MinConns:        1,
-ConnMaxLifetime: 30 * time.Minute,
-ConnMaxIdleTime: 5 * time.Minute,
-HealthCheckPeriod: 30 * time.Second,
-// If the package has additional fields you care about, set them here
-}
-
-// Create the pool
-p, err := pool.New(ctx, connString, opts)
-if err != nil {
-log.Fatalf("failed to create pool: %v", err)
-}
-defer p.Close()
-
-// Acquire a connection
-conn, release, err := p.Acquire(ctx)
-if err != nil {
-log.Fatalf("failed to acquire connection: %v", err)
-}
-defer release()
-
-// Run a trivial query to verify connectivity
