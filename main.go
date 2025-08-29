@@ -24,18 +24,18 @@ func mustParseConfig(dsn string) *pgxpool.Config {
 
 func main() {
 	var (
-		itersShort int
-		itersLong int
-		timeoutShort time.Duration
-		timeoutLong time.Duration
-		readerShort int
-		readerLong int
-		writerShort int
-		writerLong int
+		itersShort       int
+		itersLong        int
+		timeoutShort     time.Duration
+		timeoutLong      time.Duration
+		readerShort      int
+		readerLong       int
+		writerShort      int
+		writerLong       int
 		readerSleepShort time.Duration
-		readerSleepLong time.Duration
+		readerSleepLong  time.Duration
 		writerSleepShort time.Duration
-		writerSleepLong time.Duration
+		writerSleepLong  time.Duration
 	)
 	flag.IntVar(&itersShort, "i", 0, "short for --iterations: number of iterations for reader and writer workloads")
 	flag.IntVar(&itersLong, "iterations", 0, "number of iterations for reader and writer workloads")
@@ -94,7 +94,12 @@ func main() {
 		"iterations=", iterations,
 		"timeout=", timeout,
 		"reader-max-conns=", readerMax,
-		"writer-max-conns=", func() int { if writerMax>0 { return writerMax } ; return int((readerMax+2)/3) }(),
+		"writer-max-conns=", func() int {
+			if writerMax > 0 {
+				return writerMax
+			}
+			return int((readerMax + 2) / 3)
+		}(),
 		"reader-sleep=", readerSleep,
 		"writer-sleep=", writerSleep,
 	)
@@ -172,7 +177,7 @@ func main() {
 				}
 				fmt.Println("[reader] ping", i+1, "DB time:", now)
 				return nil
-			}, "select now()" ); err != nil {
+			}, "select now()"); err != nil {
 				errCh <- fmt.Errorf("reader: %w", err)
 				return
 			}
@@ -185,7 +190,7 @@ func main() {
 		defer func() { done <- struct{}{} }()
 		fmt.Println("[writer] goroutine started")
 		fmt.Println("[writer] ensuring table exists")
-		if err := writerPool.QueryFunc(ctxRun, func(ctx context.Context, rows pgx.Rows) error { return nil }, "create table if not exists tmp_crush(id int primary key, ts timestamptz)" ); err != nil {
+		if err := writerPool.QueryFunc(ctxRun, func(ctx context.Context, rows pgx.Rows) error { return nil }, "create table if not exists tmp_crush(id int primary key, ts timestamptz)"); err != nil {
 			errCh <- fmt.Errorf("writer DDL: %w", err)
 			return
 		}
@@ -199,7 +204,7 @@ func main() {
 			var ts time.Time
 			if err := writerPool.QueryRowFunc(ctxRun, func(ctx context.Context, row pgx.Row) error {
 				return row.Scan(&ts)
-			}, "insert into tmp_crush (id, ts) values (1, now()) on conflict (id) do update set ts = now() returning ts" ); err != nil {
+			}, "insert into tmp_crush (id, ts) values (1, now()) on conflict (id) do update set ts = now() returning ts"); err != nil {
 				errCh <- fmt.Errorf("writer upsert: %w", err)
 				return
 			}
