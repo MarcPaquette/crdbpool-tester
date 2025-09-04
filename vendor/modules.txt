@@ -1,16 +1,15 @@
-# github.com/authzed/crdbpool v0.1.0
-## explicit; go 1.20
+# github.com/authzed/crdbpool v0.1.1-0.20250903211644-6cd66d822467
+## explicit; go 1.24
 github.com/authzed/crdbpool/pkg
 # github.com/beorn7/perks v1.0.1
 ## explicit; go 1.11
 github.com/beorn7/perks/quantile
+# github.com/ccoveille/go-safecast v1.6.1
+## explicit; go 1.21
+github.com/ccoveille/go-safecast
 # github.com/cespare/xxhash/v2 v2.3.0
 ## explicit; go 1.11
 github.com/cespare/xxhash/v2
-# github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc
-## explicit
-# github.com/go-logr/logr v1.4.3
-## explicit; go 1.18
 # github.com/grpc-ecosystem/go-grpc-middleware/v2 v2.3.2
 ## explicit; go 1.23.0
 github.com/grpc-ecosystem/go-grpc-middleware/v2/interceptors/retry
@@ -50,8 +49,6 @@ github.com/mattn/go-isatty
 # github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822
 ## explicit
 github.com/munnerz/goautoneg
-# github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2
-## explicit
 # github.com/prometheus/client_golang v1.22.0
 ## explicit; go 1.22
 github.com/prometheus/client_golang/prometheus
@@ -73,18 +70,15 @@ github.com/prometheus/procfs/internal/util
 github.com/rs/zerolog
 github.com/rs/zerolog/internal/cbor
 github.com/rs/zerolog/internal/json
-# go.opentelemetry.io/otel v1.36.0
+# go.opentelemetry.io/otel/metric v1.36.0
 ## explicit; go 1.23.0
-# go.opentelemetry.io/otel/sdk/metric v1.36.0
+# go.opentelemetry.io/otel/sdk v1.36.0
+## explicit; go 1.23.0
+# go.opentelemetry.io/otel/trace v1.36.0
 ## explicit; go 1.23.0
 # golang.org/x/crypto v0.39.0
 ## explicit; go 1.23.0
 golang.org/x/crypto/pbkdf2
-# golang.org/x/exp v0.0.0-20240909161429-701f63a606c0
-## explicit; go 1.22.0
-golang.org/x/exp/constraints
-golang.org/x/exp/maps
-golang.org/x/exp/slices
 # golang.org/x/net v0.41.0
 ## explicit; go 1.23.0
 golang.org/x/net/http/httpguts
@@ -96,6 +90,7 @@ golang.org/x/net/internal/timeseries
 golang.org/x/net/trace
 # golang.org/x/sync v0.15.0
 ## explicit; go 1.23.0
+golang.org/x/sync/errgroup
 golang.org/x/sync/semaphore
 # golang.org/x/sys v0.33.0
 ## explicit; go 1.23.0
