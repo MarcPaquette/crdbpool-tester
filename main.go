@@ -18,30 +18,30 @@ import (
 )
 
 const (
-	defaultIterations       = 1000
-	defaultTimeout          = 5 * time.Minute
-	defaultReaderMaxConns   = 12
-	defaultWriterSleep      = 50 * time.Millisecond
-	defaultReaderSleep      = 50 * time.Millisecond
-	defaultConcurrency      = 1
-	healthPollInterval      = 5 * time.Second
-	retryAttempts           = 3
-	retryBackoff            = 200 * time.Millisecond
-	sqlNow                  = "select now()"
-	sqlEnsureTable          = "create table if not exists tmp_crush(id int primary key, ts timestamptz)"
-	sqlUpsertReturningTS    = "insert into tmp_crush (id, ts) values (1, now()) on conflict (id) do update set ts = now() returning ts"
+	defaultIterations     = 1000
+	defaultTimeout        = 5 * time.Minute
+	defaultReaderMaxConns = 12
+	defaultWriterSleep    = 50 * time.Millisecond
+	defaultReaderSleep    = 50 * time.Millisecond
+	defaultConcurrency    = 1
+	healthPollInterval    = 5 * time.Second
+	retryAttempts         = 3
+	retryBackoff          = 200 * time.Millisecond
+	sqlNow                = "select now()"
+	sqlEnsureTable        = "create table if not exists tmp_crush(id int primary key, ts timestamptz)"
+	sqlUpsertReturningTS  = "insert into tmp_crush (id, ts) values (1, now()) on conflict (id) do update set ts = now() returning ts"
 )
 
 type Config struct {
-	Iterations   int
-	Timeout      time.Duration
-	ReaderMax    int
-	WriterMax    int // 0 => derive from ReaderMax (1/3, min 1)
-	ReaderSleep  time.Duration
-	WriterSleep  time.Duration
-	ReaderConc   int
-	WriterConc   int
-	DSN          string
+	Iterations  int
+	Timeout     time.Duration
+	ReaderMax   int
+	WriterMax   int // 0 => derive from ReaderMax (1/3, min 1)
+	ReaderSleep time.Duration
+	WriterSleep time.Duration
+	ReaderConc  int
+	WriterConc  int
+	DSN         string
 }
 
 func parseFlags() Config {
@@ -234,7 +234,7 @@ func run(ctx context.Context, cfg Config) error {
 			grp, qctx := errgroup.WithContext(gctx)
 			for j := 0; j < cfg.ReaderConc; j++ {
 				grp.Go(func() error {
-					return readerPool.QueryRowFunc(qctx, func(ctx context.Context, row pgx.Row) error {
+					err := readerPool.QueryRowFunc(qctx, func(ctx context.Context, row pgx.Row) error {
 						var now time.Time
 						if err := row.Scan(&now); err != nil {
 							return err
@@ -242,10 +242,14 @@ func run(ctx context.Context, cfg Config) error {
 						log.Printf("[reader] ping %d DB time: %s", i+1, now.UTC().Format(time.RFC3339Nano))
 						return nil
 					}, sqlNow)
+					if err != nil {
+						log.Printf("[reader] query error: %v", err)
+					}
+					return nil
 				})
 			}
 			if err := grp.Wait(); err != nil {
-				return fmt.Errorf("reader batch: %w", err)
+				log.Printf("[reader] batch error: %v (continuing)", err)
 			}
 			select {
 			case <-gctx.Done():
@@ -275,14 +279,15 @@ func run(ctx context.Context, cfg Config) error {
 				grp.Go(func() error {
 					var ts time.Time
 					if err := writerPool.QueryRowFunc(qctx, func(ctx context.Context, row pgx.Row) error { return row.Scan(&ts) }, sqlUpsertReturningTS); err != nil {
-						return err
+						log.Printf("[writer] query error: %v", err)
+						return nil
 					}
 					log.Printf("[writer] upsert ok, ts: %s", ts.UTC().Format(time.RFC3339Nano))
 					return nil
 				})
 			}
 			if err := grp.Wait(); err != nil {
-				return fmt.Errorf("writer batch: %w", err)
+				log.Printf("[writer] batch error: %v (continuing)", err)
 			}
 			select {
 			case <-gctx.Done():
