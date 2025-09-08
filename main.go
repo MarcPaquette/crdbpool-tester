@@ -152,6 +152,7 @@ func mustParsePoolConfig(dsn string) *pgxpool.Config {
 	if err != nil {
 		log.Fatalf("parse config: %v", err)
 	}
+	cfg.ConnConfig.Tracer = simpleTracer{}
 	return cfg
 }
 
@@ -201,6 +202,7 @@ func run(ctx context.Context, cfg Config) error {
 
 	readerCfg := *baseCfg
 	readerCfg.MaxConns = int32(cfg.ReaderMax)
+	readerCfg.ConnConfig.Tracer = baseCfg.ConnConfig.Tracer
 	readerPool, err := crdbpool.NewRetryPool(ctx, "reader", &readerCfg, ht, retryAttempts, retryBackoff)
 	if err != nil {
 		return fmt.Errorf("create reader pool: %w", err)
@@ -209,6 +211,7 @@ func run(ctx context.Context, cfg Config) error {
 
 	writerCfg := *baseCfg
 	writerCfg.MaxConns = deriveWriterMax(cfg.ReaderMax, cfg.WriterMax)
+	writerCfg.ConnConfig.Tracer = baseCfg.ConnConfig.Tracer
 	writerPool, err := crdbpool.NewRetryPool(ctx, "writer", &writerCfg, ht, retryAttempts, retryBackoff)
 	if err != nil {
 		return fmt.Errorf("create writer pool: %w", err)
